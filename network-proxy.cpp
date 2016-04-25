@@ -1,81 +1,96 @@
-int main()
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <iostream>
+#include <string>
+using namespace std;
+
+const int MAXDATASIZE = 1000;
+
+string constructMessage(string method_str, string path_str,
+                       string http_ver_str, string hostname_str,
+                       string header_str){
+  string temp_str = "";
+
+  temp_str += method_str;
+  temp_str += " ";
+  temp_str += path_str;
+  temp_str += " ";
+  temp_str += http_ver_str;
+  temp_str += "\r\n";
+  temp_str += hostname_str;
+  temp_str += "\r\n";
+  temp_str += header_str;
+  temp_str += "Connection: close\r\n\r\n";
+
+  return temp_str;
+  }
+
+int main(int argc, char *argv[])
 {
-    char method_arr[MAXDATASIZE];
-    char unparsed_url_arr[MAXDATASIZE];
-    char http_arr[MAXDATASIZE];
-    char header_arr[MAXDATASIZE]
-    char hostname_arr[MAXDATASIZE];
-    char path_arr[MAXDATASIZE];
-    int method_len = 0;
-    int url_len = 0;
-    int http_len = 0;
-    int header_len = 0;
-    int hostname_len = 0;
-    int path_len = 0;
-    char* reader_loc = method_arr;
-    int* counter_ptr = &method_len;
-    bool seen_whitespace = false;
-    int num_slashes = 0;
-    int hostname_index;
+  string method_str;
+  string unparsed_url_str;
+  string temp_url_str;
+  string http_ver_str;
+  string header_str = "";
+  string hostname_str;
+  string path_str = "/";
+  size_t host_start_ind;
+  size_t host_end_ind;
+  //int message_len;
+  string ready_message_str;
 
-    if(argc > 3) {
-        fprintf(stderr,"usage: client hostname\n");
-        exit(1);
+  method_str = argv[1];
+  unparsed_url_str = argv[2];
+  http_ver_str = argv[3];
+
+  if(argc > 4){
+    header_str = argv[4];
+    header_str += ' ';
+    header_str += argv[5];
+    header_str += "\r\n";
+
+    if(argc > 6){
+      for(int i = 6; i < argc; i+=2){
+        header_str += argv[i];
+        header_str += ' ';
+        header_str += argv[i+1];
+        header_str += "\r\n";
+      }
     }
+  }
 
-    for(unsigned int i = 0; i < strlen(argv[1]); i++){
-        if(argv[1][i] == ' ' && seen_whitespace == false){
-            seen_whitespace = true;
-            reader_loc = unparsed_url_arr;
-            counter_ptr = &unparsed_url_len;
-            continue;
+  host_start_ind = unparsed_url_str.find("www");
+  temp_url_str = unparsed_url_str.substr(host_start_ind);
+  host_end_ind = temp_url_str.find("/");
+  path_str += temp_url_str.substr(host_end_ind + 1);
+  hostname_str = temp_url_str.substr(0, host_end_ind);
 
-        }
-        if(argv[1][i] == ' ' && seen_whitespace == true){
-            reader_loc = http_arr;
-            counter_ptr = &http_len;
-            continue;
-        }
+  ready_message_str = constructMessage(method_str, path_str, http_ver_str,
+                                   hostname_str, header_str);
 
-        if(argv[1][i] == '\n'){
-            reader_loc = header_arr;
-            counter_ptr = header_len;
-            continue;
-        }
-
-        *reader_loc = argv[1][i];
-        reader_loc++;
-        *counter_ptr += 1;
-    }
-    *reader_loc = '\0';
-
-    for(unsigned int i = 0; i < strlen(unparsed_url_arr); i++){
-        if(unparsed_url_arr[i] == '/')
-            num_slashes++;
-        if(num_slashes == 2){
-            hostname_index = i+1;
-            reader_loc = hostname_arr;
-            counter_ptr = hostname_len;
-            break;
-        }
-
-    }
-
-    for(unsigned int i = hostname_index; i < strlen(unparsed_url_arr); i++){
-        if(unparsed_url_arr[i] == '/'){
-            reader_loc = path_arr;
-            counter_ptr = path_len;
-        }
-
-        *reader_loc = unparsed_url_arr[i];
-        reader_loc++;
-        *counter_ptr += 1;
-    }
-
-
-
-
-
-
-
+  cout << ready_message_str;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
