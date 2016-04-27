@@ -208,8 +208,23 @@ void *get_in_addr(struct sockaddr *sa)
 void* threadFunc(void* t_args)
 {
   struct thread_args *passed_args = (struct threadArgs*) t_args;
-  string unparsed_message
+  string unparsed_message;
   int server_port_num;
+  int byte_read;
+  char buffer[MAXDATASIZE];
+  char* bp = buffer;
+
+  for(int i = 0; i < MAXDATASIZE; i++)
+    buffer[i] = '\0';
+
+  while(true){
+    byte_read = recv(comm_sock_num, (void*)bp, MAXDATASIZE, 0);
+    if(*(bp + byte_read) == '\0')
+      break;
+  }
+
+  unparsed_message = string(bp);
+
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num);
 	string ret;
 	//now we need to send and receive
