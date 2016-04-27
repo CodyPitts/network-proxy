@@ -62,7 +62,7 @@ string absoluteToRelative(string absolute_uri, int &server_port_num){
     ++count;
   }
 
-    unparsed_url = chunks[1];
+  unparsed_url = chunks[1];
   host_start_ind = unparsed_url.find("www");
   temp_url = unparsed_url.substr(host_start_ind);
   host_end_ind = temp_url.find("/");

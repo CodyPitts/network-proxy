@@ -15,13 +15,20 @@
 #include <iostream>
 #include <pthread.h>
 #include <vector>
-
-
-
+#include <string>
+#include <sstream>
+#include <numeric>
 using namespace std;
+
 #define BACKLOG 10 //how many pending connections queue will hold
 
 #define MAXDATASIZE 1000
+const int MAXARGUMENTS = 1000;
+
+string absoluteToRelative(string absolute_uri, int &server_port_num);
+
+string parseClientArguments(string unparsed_message,
+                                    string delimiter, int &server_port_num);
 
 //some functionality from Beej
 void sigchld_handler(int s);
@@ -29,7 +36,7 @@ void sigchld_handler(int s);
 //get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa);
 
-void* threadFunc(string user_input);
+void* threadFunc(string unparsed_message);
 
 string parse();
 
@@ -184,14 +191,90 @@ void *get_in_addr(struct sockaddr *sa)
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void* threadFunc(string user_input)
+void* threadFunc(string unparsed_message, int &server_port_num)
 {
-	string parsed_input = parse();
+	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num);
 	string ret;
 	//now we need to send and receive
 }
 
-string parse()
-{
-	return " ";
+string absoluteToRelative(string absolute_uri, int &server_port_num){
+
+  stringstream ssin(absolute_uri);
+  int count = 0;
+  string chunks[3];
+  string unparsed_url;
+  string temp_url;
+  string hostname;
+  string path = "/";
+  string complete;
+  size_t host_start_ind;
+  size_t host_end_ind;
+  size_t port_pos;
+  string temp_port;
+
+  while(ssin){
+    if(count > 3)
+      cerr << "Malformed request";
+
+    ssin >> chunks[count];
+    ++count;
+  }
+
+  unparsed_url = chunks[1];
+  host_start_ind = unparsed_url.find("www");
+  temp_url = unparsed_url.substr(host_start_ind);
+  host_end_ind = temp_url.find("/");
+  path += temp_url.substr(host_end_ind + 1);
+  hostname = temp_url.substr(0, host_end_ind);
+
+  port_pos = hostname.find(":");
+
+  if(port_pos != string::npos){
+    temp_port = hostname.substr(port_pos + 1);
+    server_port_num = atoi(temp_port.c_str());
+  }
+
+  complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
+    + "Host: " + hostname + "\r\n";
+
+  return complete;
 }
+
+string parseClientArguments(string unparsed_message,
+                                    string delimiter, int &server_port_num){
+
+  size_t index = 0;
+  string temp;
+  vector<string> arg_lines;
+  bool edited_connection = false;
+  string finished_request;
+
+  while((index = unparsed_message.find(delimiter)) != string::npos){
+    temp = unparsed_message.substr(0, index + delimiter.length());
+      arg_lines.push_back(temp);
+      unparsed_message.erase(0, index + delimiter.length());
+  }
+
+  arg_lines[0] = absoluteToRelative(arg_lines[0], server_port_num);
+
+  for(unsigned int i = 0; i < arg_lines.size(); i++){
+    if(arg_lines[i].find("Connection:") != string::npos){
+      arg_lines[i] = "Connection: close\r\n";
+      edited_connection = true;
+    }
+  }
+
+  if(edited_connection == false)
+    arg_lines[1] += "Connection: close\r\n";
+
+  finished_request = accumulate(test_vec.begin(), test_vec.end(), string(""));
+
+  return finished_request;
+
+}
+
+
+
+
+
