@@ -40,6 +40,16 @@ void* threadFunc(string unparsed_message);
 
 string parse();
 
+//declare struct for the threads to use
+
+struct thread_args
+{
+  int* thread_size_ptr;
+  int proxy_port_num;
+  int comm_sock_num;
+
+};
+
 int main(int argc, char *argv[])
 {
   //variables for server listening
@@ -72,7 +82,7 @@ int main(int argc, char *argv[])
   bool running;
   pthread_mutex_t condition;
   pthread_t thread_pool[num_threads];
-
+  thread_args *t_args;
 
 
   if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) {
@@ -138,19 +148,23 @@ int main(int argc, char *argv[])
 
     //start thread stuff
 
-	//DO WE NEED TO LOCK HERE?
-	//if thread pool is full
-	if(current_size > 30)
-		return 0;
-		//unlock as well if we need lock
-	string current_input;
-	//create a thread with a function to parse, send, and receive shit
-	pthread_t current_thread = thread_pool[current_size];
-	pthread_create(current_thread, NULL,
-				   threadFunc, (void*)comm_sock);
-	current_size++;
-	//unlock here if lock is needed
+  //DO WE NEED TO LOCK HERE?
+  //if thread pool is full
+  if(current_size > 30)
+    return 0;
+    //unlock as well if we need lock
+  string current_input;
+  //create a thread with a function to parse, send, and receive shit
+  
+  (*t_args).thread_size_ptr = *current_size;
+  (*t_args).proxy_port_num = 80;
+  (*t_args).comm_sock_num = comm_sock;
 
+  pthread_t current_thread = thread_pool[current_size];
+  pthread_create(&current_thread, NULL,
+           threadFunc, (void*) t_args);
+  current_size++;
+  //unlock here if lock is needed
 
     /*
     if (!fork()) { //in child now
@@ -191,8 +205,11 @@ void *get_in_addr(struct sockaddr *sa)
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void* threadFunc(string unparsed_message, int &server_port_num)
+void* threadFunc(void* t_args)
 {
+  struct thread_args *passed_args = (struct threadArgs*) t_args;
+  string unparsed_message
+  int server_port_num;
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num);
 	string ret;
 	//now we need to send and receive
@@ -268,7 +285,7 @@ string parseClientArguments(string unparsed_message,
   if(edited_connection == false)
     arg_lines[1] += "Connection: close\r\n";
 
-  finished_request = accumulate(test_vec.begin(), test_vec.end(), string(""));
+  finished_request = accumulate(arg_lines.begin(), arg_lines.end(), string(""));
 
   return finished_request;
 
