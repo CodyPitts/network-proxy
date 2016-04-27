@@ -36,7 +36,7 @@ void sigchld_handler(int s);
 //get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa);
 
-void* threadFunc(string unparsed_message);
+void* threadFunc(void * t_args);
 
 string parse();
 
@@ -152,19 +152,17 @@ int main(int argc, char *argv[])
   //if thread pool is full
   if(current_size > 30)
     return 0;
-    //unlock as well if we need lock
+
   string current_input;
   //create a thread with a function to parse, send, and receive shit
   
-  (*t_args).thread_size_ptr = *current_size;
+  (*t_args).thread_size_ptr = &current_size;
   (*t_args).proxy_port_num = 80;
   (*t_args).comm_sock_num = comm_sock;
 
   pthread_t current_thread = thread_pool[current_size];
   pthread_create(&current_thread, NULL,
            threadFunc, (void*) t_args);
-  current_size++;
-  //unlock here if lock is needed
 
     /*
     if (!fork()) { //in child now
@@ -207,7 +205,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 void* threadFunc(void* t_args)
 {
-  struct thread_args *passed_args = (struct threadArgs*) t_args;
+  struct thread_args *passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   int server_port_num;
   int byte_read;
