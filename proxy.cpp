@@ -84,8 +84,9 @@ int main(int argc, char *argv[])
   pthread_t thread_pool[num_threads];
   thread_args *t_args;
 
+  
 
-  if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(NULL, "cs2.seattleu.edu", &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return 1;
   }
@@ -216,7 +217,7 @@ void* threadFunc(void* t_args)
     buffer[i] = '\0';
 
   while(true){
-    byte_read = recv(comm_sock_num, (void*)bp, MAXDATASIZE, 0);
+    byte_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0);
     if(*(bp + byte_read) == '\0')
       break;
   }
