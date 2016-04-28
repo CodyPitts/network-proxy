@@ -25,7 +25,7 @@ using namespace std;
 
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10346";
+const char* port = "10349";
 pthread_mutex_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
   bool running;
   pthread_mutex_t condition;
   pthread_t thread_pool[num_threads];
-  thread_args *t_args;
+  struct thread_args *t_args = new thread_args;
 
   
 
@@ -153,22 +153,25 @@ int main(int argc, char *argv[])
   //{
   
   //}
-             printf("Waiting for connections...\n");
- (*t_args).thread_size_ptr = &current_size;
+  printf("Waiting for connections...\n");
 
-  (*t_args).proxy_port_num = 80;
-  (*t_args).comm_sock_num = comm_sock;
+  t_args->proxy_port_num = 80;
+  t_args->comm_sock_num = comm_sock;
 
-  (*t_args).hints = hints;
-  (*t_args).servinfo = *servinfo;
+  t_args->hints = hints;
+  t_args->servinfo = *servinfo;
 
  
   for(int i = 0; i < num_threads; i++)
   {
 
-   // pthread_t current_thread = thread_pool[i];
+    //pthread_t current_thread = thread_pool[i];
 
-    //pthread_create(&current_thread, NULL, threadFunc, (void*) t_args);
+    //pthread_create(&thread_pool[i], NULL, threadFunc, (void*) &t_args);
+
+    //if((rv = pthread_create(&thread_pool[i], NULL, threadFunc,(void *) &t_args)) != 0)
+      //exit(-1);
+
   }
 
   while(1) {
@@ -196,6 +199,7 @@ int main(int argc, char *argv[])
       //pthread_mutex_unlock(&mut);
   }
     //close(comm_sock);
+  delete t_args;
 
   delete comm_sock;
   return 0;
