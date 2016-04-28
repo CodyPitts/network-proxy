@@ -88,7 +88,10 @@ int main(int argc, char *argv[])
   //vector<pthread_t> threads;
   bool running;
   pthread_mutex_t condition;
-  pthread_t thread_pool[num_threads];
+  //pthread_t thread_pool[num_threads];
+  vector<pthread_t> thread_pool;
+  thread_pool.resize(30);
+
   struct thread_args *t_args = new thread_args;
 
   
@@ -164,10 +167,12 @@ int main(int argc, char *argv[])
  
   for(int i = 0; i < num_threads; i++)
   {
-
+    pthread_t temp_t;
+    pthread_create(&temp_t, NULL, threadFunc, (void*) t_args);
+    thread_pool.push_back(temp_t);
     //pthread_t current_thread = thread_pool[i];
 
-    //pthread_create(&thread_pool[i], NULL, threadFunc, (void*) &t_args);
+    //pthread_create(&thread_pool[i], NULL, threadFunc, (void*) t_args);
 
     //if((rv = pthread_create(&thread_pool[i], NULL, threadFunc,(void *) &t_args)) != 0)
       //exit(-1);
