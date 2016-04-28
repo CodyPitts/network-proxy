@@ -26,10 +26,10 @@ using namespace std;
 const int MAXARGUMENTS = 20000;
 const char* port = "10347";
 
-string absoluteToRelative(string absolute_uri, int &server_port_num, string &hostname);
+string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
 string parseClientArguments(string unparsed_message,
-                                    string delimiter, int &server_port_num, string &hostname);
+                                    string delimiter, string &server_port_num, string &hostname);
 
 //some functionality from Beej
 void sigchld_handler(int s);
@@ -214,7 +214,7 @@ void* threadFunc(void* t_args)
   struct thread_args *passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   struct addrinfo *thread_info, *p;
-  int server_port_num;
+  string server_port_num;
   int client_sock;
   string hostname;
   int byte_read;
@@ -238,7 +238,7 @@ void* threadFunc(void* t_args)
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num, hostname);
 	//now we need to send and receive
 
-  if((rv = getaddrinfo(hostname.c_str(), server_port_num, &(*passed_args).hints, 
+  if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return;
@@ -282,7 +282,7 @@ void* threadFunc(void* t_args)
 
 }
 
-string absoluteToRelative(string absolute_uri, int &server_port_num, string &hostname){
+string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname){
 
   stringstream ssin(absolute_uri);
   int count = 0;
@@ -315,7 +315,7 @@ string absoluteToRelative(string absolute_uri, int &server_port_num, string &hos
 
   if(port_pos != string::npos){
     temp_port = hostname.substr(port_pos + 1);
-    server_port_num = atoi(temp_port.c_str());
+    server_port_num = temp_port;
   }
 
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
@@ -325,7 +325,7 @@ string absoluteToRelative(string absolute_uri, int &server_port_num, string &hos
 }
 
 string parseClientArguments(string unparsed_message,
-                                    string delimiter, int &server_port_num, string &hostname){
+                                    string delimiter, string &server_port_num, string &hostname){
 
   size_t index = 0;
   string temp;
