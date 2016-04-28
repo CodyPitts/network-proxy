@@ -25,7 +25,7 @@ using namespace std;
 
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10348";
+const char* port = "10347";
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
@@ -331,29 +331,19 @@ void* threadFunc(void* t_args)
   cout << "after connection" << endl << endl;
   cout << "parsed Input: " << endl << parsed_input << endl;
   cout <<"parsed input length: " << parsed_input.length() << endl;
+
   do{
     byte_sent = send(server_sock, (void*) parsed_input.c_str(), parsed_input.length(), 0);  
     cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) parsed_input.length());
  
 
-
- 
-  // while(true){
-  //   cout << "inside recv while" << endl;
-  //   byte_read = recv(server_sock, (void*)bp, MAXDATASIZE, 0);
-  //   bp += bytes_read;
-  //   receivedData += string(bp);
-  //   if(byte_read == 0)
-  //     break;
-  // }
   read = true;
   receivedData = "";
   char receive[MAXDATASIZE];
   char* recPtr = receive;
   while(read)
   {
-
     cout << "inside recv while" << endl;
     while ((bytes_read = recv(server_sock, (void*)recPtr, MAXDATASIZE, 0)) > 0)
     {
@@ -386,13 +376,11 @@ void* threadFunc(void* t_args)
 
 
   cout << "receivedData: " << receivedData <<endl;
-  cout << "after receive from serv" << endl;
-
-
-
+  cout <<"receivedData Length: " << receivedData.length() << endl;
 
   do{
-    byte_sent = send((*passed_args).comm_sock_num, (void*) receive, MAXDATASIZE, 0);
+    byte_sent = send((*passed_args).comm_sock_num, (void*) receivedData.c_str(), receivedData.length(), 0);
+    cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
   
