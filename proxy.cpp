@@ -261,15 +261,13 @@ void* threadFunc(void* t_args)
 
   while(read)
   {
-    cout << "got here" << endl;
-
     while (( bytes_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0)) > 0)
     {
       if( *(bp + bytes_read) == '\0')
         break;
       bp += bytes_read;
       if(bytes_read == 0)
-        test = false;
+        break;
     }
     //tempData += string(bp);
     receivedData += string(bp);
@@ -301,13 +299,15 @@ void* threadFunc(void* t_args)
 
   cout << "parsed input: " << parsed_input << endl;
 
+  cout << "host: " << hostname << endl;
+  cout << "port: " << server_port_num << endl;
   //now we need to send and receive to server
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     exit(0);
   }
-cout << "Got to this point after parse" << endl;
+
   for(p = thread_info; p != NULL; p = p->ai_next) {
     if ((server_sock = socket(p->ai_family, p->ai_socktype,
                          p->ai_protocol)) == -1) {
@@ -316,11 +316,11 @@ cout << "Got to this point after parse" << endl;
     }
 
     if (connect(server_sock, p->ai_addr, p->ai_addrlen) == -1) {
+      cout << "inside connect error" << endl;
       close(server_sock);
       cerr << "Connect";
       continue;
     }
-
     break;
   }
 
@@ -328,23 +328,78 @@ cout << "Got to this point after parse" << endl;
     fprintf(stderr, "Failed to connect\n");
     exit(0);
   }
-
+  cout << "after connection" << endl << endl;
+  cout << "parsed Input: " << endl << parsed_input << endl;
+  cout <<"parsed input length: " << parsed_input.length() << endl;
   do{
-    byte_sent += send(server_sock, (void*) parsed_input.c_str(), parsed_input.length(), 0);
+    byte_sent = send(server_sock, (void*) parsed_input.c_str(), parsed_input.length(), 0);  
+    cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) parsed_input.length());
+ 
 
-  while(true){
-    byte_read = recv(server_sock, (void*)bp, MAXDATASIZE, 0);
-    if(byte_read == 0)
-      break;
+
+ 
+  // while(true){
+  //   cout << "inside recv while" << endl;
+  //   byte_read = recv(server_sock, (void*)bp, MAXDATASIZE, 0);
+  //   bp += bytes_read;
+  //   receivedData += string(bp);
+  //   if(byte_read == 0)
+  //     break;
+  // }
+  read = true;
+  receivedData = "";
+  char receive[MAXDATASIZE];
+  char* recPtr = receive;
+  while(read)
+  {
+
+    cout << "inside recv while" << endl;
+    while ((bytes_read = recv(server_sock, (void*)recPtr, MAXDATASIZE, 0)) > 0)
+    {
+      cout << "bytes_read: " << bytes_read;
+      if( *(bp + bytes_read) == '\0')
+        break;
+      bp += bytes_read;
+      if(bytes_read == 0)
+        break;
+    }
+
+    cout << "after inside recv while" << endl;
+    cout << "what are bytes_read:" << bytes_read << endl;
+    //tempData += string(bp);
+    receivedData += string(bp);
+
+    if(receivedData.length() == oldDataLen)
+    {
+      read = false;
+    }
+    else
+    {
+      //clear the buffer
+      for(int i = 0; i < MAXDATASIZE; i++)
+        buffer[i] = '\0';
+      oldDataLen = receivedData.length();
+    }
+    cout << "received data: " << receivedData << endl;
   }
 
+
+  cout << "receivedData: " << receivedData <<endl;
+  cout << "after receive from serv" << endl;
+
+
+
+
   do{
-    byte_sent += send((*passed_args).comm_sock_num, (void*) buffer, MAXDATASIZE, 0);
+    byte_sent = send((*passed_args).comm_sock_num, (void*) buffer, MAXDATASIZE, 0);
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
-
+  
+  cout << "At end of thread" << endl;
 }
+
+
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname){
 
@@ -387,6 +442,9 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
     temp_port = hostname.substr(port_pos + 1);
     server_port_num = temp_port;
   }
+  else{
+    server_port_num = "80";
+  }
 
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
     + "Host: " + hostname;
@@ -401,7 +459,7 @@ string parseClientArguments(string unparsed_message,
   size_t index = 0;
   string temp;
   vector<string> arg_lines;
-  arg_lines.resize(20);
+  arg_lines.resize(MAXARGUMENTS);
   bool edited_connection = false;
   string finished_request;
   int count = 0;
