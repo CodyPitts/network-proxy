@@ -220,7 +220,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 void* threadFunc(void* t_args)
 {
-  struct thread_args *passed_args = (struct thread_args*) t_args;
+  struct thread_args* passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   struct addrinfo *thread_info, *p;
   string server_port_num;
@@ -231,6 +231,7 @@ void* threadFunc(void* t_args)
   int rv;
   char buffer[MAXDATASIZE];
   char* bp = buffer;
+  string carriageRet = "\r\n";
   string temp_len_1, temp_len_2;
 
 
@@ -238,21 +239,65 @@ void* threadFunc(void* t_args)
   for(int i = 0; i < MAXDATASIZE; i++)
     buffer[i] = '\0';
 
-  cout << "we here" << endl;
-  while(true){
-    byte_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0);
-    if(byte_read == 0)
-      break;
-    else if(byte_read == -1)
+  // while(true){
+  //   byte_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0);
+  //   cout << "we here" << endl;
+  //   cout << byte_read << endl;
+  //   if(byte_read == 0)
+  //     break;
+  //   else if(byte_read == -1)
+  //   {
+  //    cout << "we have error reading" << endl;
+  //    break;
+  //   }
+  // }
+
+  string receivedData;
+  string tempData;
+  int oldDataLen = -1;
+  bool read = true;
+  bool test= true;
+  int bytes_read;
+
+  while(read)
+  {
+    cout << "got here" << endl;
+
+    while (( bytes_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0)) > 0)
     {
-
-     cout << "we have error reading" << endl;
+     // cout << bytes_read << endl;
+      if( *(bp + bytes_read) == '\0')
+        break;
+      bp += bytes_read;
+      //cout << bytes_read << endl;
+      if(bytes_read == 0)
+        test = false;
     }
+    //tempData += string(bp);
+    receivedData += string(bp);
+
+    if(receivedData.find(carriageRet+carriageRet) != -1 || receivedData.length() == oldDataLen)
+      read = false;
+
+    //clear the buffer
+    for(int i = 0; i < MAXDATASIZE; i++)
+      buffer[i] = '\0';
+    oldDataLen = receivedData.length();
+    cout << receivedData << endl;
   }
-  unparsed_message = string(bp);
 
-	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num, hostname);
 
+
+  unparsed_message = receivedData;
+  cout << "past while" << endl;
+  cout << unparsed_message << endl;
+
+	string parsed_input = parseClientArguments(unparsed_message, carriageRet, server_port_num, hostname);
+
+  cout << "past parsing" << endl;
+
+
+  cout << "parsed input: " << parsed_input << endl;
 
   //now we need to send and receive to server
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
@@ -313,15 +358,20 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   size_t port_pos;
   string temp_port;
 
-  while(ssin){
-    if(count > 3)
-      cerr << "Malformed request";
 
+  while(ssin){
+    //if(count > 3){
+      //cerr << "Malformed request";
     ssin >> chunks[count];
     ++count;
   }
-
+  if (count != 3){
+    cerr << "malformed request" << endl;
+    return "malformed request";
+  }
   unparsed_url = chunks[1];
+
+  cout << "in absoluteTo" << endl;
   host_start_ind = unparsed_url.find("www");
   temp_url = unparsed_url.substr(host_start_ind);
   host_end_ind = temp_url.find("/");
@@ -338,6 +388,7 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
     + "Host: " + hostname + "\r\n";
 
+  cout << complete << endl;
   return complete;
 }
 
@@ -347,17 +398,27 @@ string parseClientArguments(string unparsed_message,
   size_t index = 0;
   string temp;
   vector<string> arg_lines;
+  arg_lines.resize(20);
   bool edited_connection = false;
   string finished_request;
 
   while((index = unparsed_message.find(delimiter)) != string::npos){
+    cout <<"in parse while" << endl;
     temp = unparsed_message.substr(0, index + delimiter.length());
-      arg_lines.push_back(temp);
-      unparsed_message.erase(0, index + delimiter.length());
+    cout << "temp: " << temp << endl;
+
+    arg_lines.push_back(temp);
+    unparsed_message.erase(0, index + delimiter.length());
   }
 
+  cout << "in parse" << endl;
+  cout << "unparsed_message: " << arg_lines[0] << endl;
   arg_lines[0] = absoluteToRelative(arg_lines[0], server_port_num, hostname);
+  //arg_lines.push_back(absoluteToRelative(arg_lines[0], server_port_num, hostname));
 
+  if (arg_lines[0] == "malformed request"){
+    return "malformed request";
+  }
   for(unsigned int i = 0; i < arg_lines.size(); i++){
     if(arg_lines[i].find("Connection:") != string::npos){
       arg_lines[i] = "Connection: close\r\n";
