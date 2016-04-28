@@ -290,7 +290,7 @@ void* threadFunc(void* t_args)
 
   unparsed_message = receivedData;
   cout << "past while" << endl;
-  cout << unparsed_message << endl;
+  cout << "unparsed message: " << unparsed_message << endl;
 
 	string parsed_input = parseClientArguments(unparsed_message, carriageRet, server_port_num, hostname);
 
@@ -357,7 +357,7 @@ void* threadFunc(void* t_args)
     cout << "inside recv while" << endl;
     while ((bytes_read = recv(server_sock, (void*)recPtr, MAXDATASIZE, 0)) > 0)
     {
-      cout << "bytes_read: " << bytes_read;
+      cout << "bytes_read: " << bytes_read << endl;
       if( *(bp + bytes_read) == '\0')
         break;
       bp += bytes_read;
@@ -392,7 +392,7 @@ void* threadFunc(void* t_args)
 
 
   do{
-    byte_sent = send((*passed_args).comm_sock_num, (void*) buffer, MAXDATASIZE, 0);
+    byte_sent = send((*passed_args).comm_sock_num, (void*) receive, MAXDATASIZE, 0);
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
   
