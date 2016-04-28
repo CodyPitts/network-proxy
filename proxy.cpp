@@ -145,7 +145,6 @@ int main(int argc, char *argv[])
 
 
   while(1) {
-    //cout << "in start of while" << endl;
     sin_size = sizeof their_addr; 
     //cout << "before if statement" << endl;
 
@@ -176,7 +175,7 @@ int main(int argc, char *argv[])
           pthread_create(&current_thread, NULL,
                    threadFunc, (void*) t_args);
           
-         // close(listen_sock);  //child doesn't need this
+          close(listen_sock);  //parent doesn't need this
       //}
 
       //pthread_mutex_unlock(&mut);
