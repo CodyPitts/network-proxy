@@ -446,8 +446,7 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
     server_port_num = "80";
   }
 
-  complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
-    + "Host: " + hostname;
+  complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n";
 
   cout << "complete:" << complete << endl;
   return complete;
