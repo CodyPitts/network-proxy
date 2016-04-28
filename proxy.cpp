@@ -24,8 +24,9 @@ using namespace std;
 #define BACKLOG 10 //how many pending connections queue will hold
 
 #define MAXDATASIZE 20000
+ pthread_mutex_t mut;
 const int MAXARGUMENTS = 1000;
-const char* port = "10347";
+const char* port = "10348";
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
@@ -51,6 +52,7 @@ struct thread_args
   int comm_sock_num;
   struct addrinfo hints;
   struct addrinfo servinfo;
+  pthread_mutex_t tMutex;
 
 };
 
@@ -79,7 +81,6 @@ int main(int argc, char *argv[])
   //variables for threading  
   int current_size = 0;
   int num_threads = 30;
-  pthread_mutex_t mut;
   pthread_mutex_init(&mut, NULL);
   //pool of current threads
   //vector<pthread_t> threads;
@@ -178,18 +179,7 @@ int main(int argc, char *argv[])
       pthread_create(&current_thread, NULL,
                threadFunc, (void*) t_args);
       close(listen_sock);
-        /*
-        if (!fork()) { //in child now
-          //runFinger(comm_sock, bp);
-
-          close(listen_sock); //child doesn't need the listen socket
-
-          close(comm_sock);
-          exit(0);
-        }
-        */
     }
-    //close(comm_sock);  //parent doesn't need this
   }
 
   return 0;
@@ -383,12 +373,20 @@ void* threadFunc(void* t_args)
   cout <<"receivedData Length: " << receivedData.length() << endl;
 
   do{
-    byte_sent = send((*passed_args).comm_sock_num, (void*) receivedData.c_str(), receivedData.length(), 0);
+    byte_sent = send((*passed_args).comm_sock_num, (void*) receivedData.c_str(), MAXDATASIZE, 0);
     cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
   
   cout << "At end of thread" << endl;
+
+  pthread_mutex_lock(&mut);
+
+  (*passed_args).thread_size_ptr--;
+
+  pthread_mutex_unlock(&mut);
+
+  pthread_exit((void*)rv);
 }
 
 
