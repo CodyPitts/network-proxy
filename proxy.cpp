@@ -25,7 +25,7 @@ using namespace std;
 
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10346";
+const char* port = "10348";
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
@@ -360,18 +360,19 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   size_t port_pos;
   string temp_port;
 
-
   while(ssin){
     //if(count > 3){
       //cerr << "Malformed request";
     ssin >> chunks[count];
     ++count;
   }
+
+  cout << chunks[0] << " " << chunks[1] << " " << chunks[2] << endl;
   // if (count != 3){
   //   cerr << "malformed request" << endl;
   //   return "malformed request";
   // }
-   unparsed_url = chunks[1];
+  unparsed_url = chunks[1];
 
   cout << "in absoluteTo" << endl;
   host_start_ind = unparsed_url.find("www");
@@ -388,7 +389,7 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   }
 
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
-    + "Host: " + hostname + "\r\n";
+    + "Host: " + hostname;
 
   cout << complete << endl;
   return complete;
