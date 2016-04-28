@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
   (*t_args).proxy_port_num = 80;
   (*t_args).comm_sock_num = comm_sock;
   (*t_args).hints = hints;
-  (*t_args).servinfo = servinfo;
+  (*t_args).servinfo = *servinfo;
 
   pthread_t current_thread = thread_pool[current_size];
   pthread_create(&current_thread, NULL,
@@ -229,7 +229,7 @@ void* threadFunc(void* t_args)
 
   while(true){
     byte_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0);
-    if(*(bp + byte_read) == '\0')
+    if(byte_read == 0)
       break;
   }
 
@@ -238,7 +238,7 @@ void* threadFunc(void* t_args)
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num, hostname);
 	//now we need to send and receive
 
-  if((rv = getaddrinfo(hostname.c_str(), server_port_num, &(*passed_args).hints,
+  if((rv = getaddrinfo(hostname.c_str(), server_port_num, &(*passed_args).hints, 
     &(*passed_args).servinfo)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return;
