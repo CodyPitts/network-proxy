@@ -25,7 +25,7 @@ using namespace std;
 
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10348";
+const char* port = "10346";
 pthread_mutex_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
@@ -48,8 +48,9 @@ string parse();
 struct thread_args
 {
   int* thread_size_ptr;
+  int* socketNum;
   int proxy_port_num;
-  int comm_sock_num;
+  int* comm_sock_num;
   struct addrinfo hints;
   struct addrinfo servinfo;
 
@@ -58,7 +59,8 @@ struct thread_args
 int main(int argc, char *argv[])
 {
   //variables for server listening
-  int listen_sock, comm_sock;  //listen_sock is listen, comm_sock is talk
+  int listen_sock;
+  int* comm_sock = new int;  //listen_sock is listen, comm_sock is talk
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr_storage their_addr; //client's address info
   struct sigaction sa;
@@ -79,7 +81,7 @@ int main(int argc, char *argv[])
 
   //variables for threading  
   int current_size = 0;
-  int num_threads = 30;
+  int num_threads = 30; 
   pthread_mutex_t mut;
   pthread_mutex_init(&mut, NULL);
   //pool of current threads
@@ -143,46 +145,59 @@ int main(int argc, char *argv[])
 
   printf("Waiting for connections...\n");
 
+  //if(argv[1])
+  //{
+    //(*t_args).proxy_port_num = argv[1];
+  //}
+  //else
+  //{
+  
+  //}
+             printf("Waiting for connections...\n");
+ (*t_args).thread_size_ptr = &current_size;
+
+  (*t_args).proxy_port_num = 80;
+  (*t_args).comm_sock_num = comm_sock;
+
+  (*t_args).hints = hints;
+  (*t_args).servinfo = *servinfo;
+
+ 
+  for(int i = 0; i < num_threads; i++)
+  {
+
+   // pthread_t current_thread = thread_pool[i];
+
+    //pthread_create(&current_thread, NULL, threadFunc, (void*) t_args);
+  }
 
   while(1) {
     sin_size = sizeof their_addr; 
     //cout << "before if statement" << endl;
-
-    comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
-    if (comm_sock == -1) {
+  
+    *comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
+    if (*comm_sock == -1) {
       //probably shouldn't have this repeat indefinitely
       //cerr << "Accepting ";
      // cout << "in if";
       continue;
     }
-    else
-    {
 
-      pthread_mutex_lock(&mut);
-
-      cout << "inside lock" << endl;
+  //pthread_mutex_lock(&mut);
+     // cout << "inside lock" << endl;
       //if(current_size <= 30)
         //{ 
-          current_size++;
-          (*t_args).thread_size_ptr = &current_size;
-          (*t_args).proxy_port_num = 80;
-
-          (*t_args).comm_sock_num = comm_sock;
-          (*t_args).hints = hints;
-          (*t_args).servinfo = *servinfo;
-
-          pthread_t current_thread = thread_pool[current_size];
-          pthread_create(&current_thread, NULL,
-                   threadFunc, (void*) t_args);
+          //current_size++;
+       
           
-          close(listen_sock);  //parent doesn't need this
+         // close(listen_sock);  //parent doesn't need this
       //}
 
       //pthread_mutex_unlock(&mut);
-    }
-    //close(comm_sock);
   }
+    //close(comm_sock);
 
+  delete comm_sock;
   return 0;
   pthread_exit(NULL);
 }
@@ -240,7 +255,7 @@ void* threadFunc(void* t_args)
 
   while(read)
   {
-    while (( bytes_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0)) > 0)
+    while (( bytes_read = recv(*(*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0)) > 0)
     {
 
     cout << "inside while "<< endl;
@@ -363,7 +378,7 @@ void* threadFunc(void* t_args)
   cout <<"receivedData Length: " << receivedData.length() << endl;
 
   do{
-    byte_sent = send((*passed_args).comm_sock_num, (void*) receivedData.c_str(), MAXDATASIZE, 0);
+    byte_sent = send(*(*passed_args).comm_sock_num, (void*) receivedData.c_str(), MAXDATASIZE, 0);
     cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
