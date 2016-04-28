@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <iostream>
+#include <ostream>
 #include <pthread.h>
 #include <vector>
 #include <string>
@@ -22,9 +23,9 @@ using namespace std;
 
 #define BACKLOG 10 //how many pending connections queue will hold
 
-#define MAXDATASIZE 1000
-const int MAXARGUMENTS = 20000;
-const char* port = "10347";
+#define MAXDATASIZE 20000
+const int MAXARGUMENTS = 1000;
+const char* port = "10346";
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
@@ -103,11 +104,11 @@ int main(int argc, char *argv[])
 
     }
 
-    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &yes,
-                   sizeof(int)) == -1) {
-      cerr << "Setsockopt";
-      exit(1);
-    }
+     if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &yes,
+                    sizeof(int)) == -1) {
+       cerr << "Setsockopt";
+       exit(1);
+     }
 
     if (bind(listen_sock, p->ai_addr, p->ai_addrlen) == -1) {
       close(listen_sock);
@@ -143,44 +144,51 @@ int main(int argc, char *argv[])
 
 
   while(1) {
-    sin_size = sizeof their_addr;
-    comm_sock = accept(listen_sock, (struct sockaddr *)&their_addr, &sin_size);
+    sin_size = sizeof their_addr; 
+    cout << "before if statement" << endl;
+
+    comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
     if (comm_sock == -1) {
-      cerr << "Accepting";
+      //probably shouldn't have this repeat indefinitely
+      //cerr << "Accepting";
+      cout << "in if" << endl;
       continue;
     }
+    else
+    {
+      cout << "in else" << endl;
+        //start thread stuff
 
-    //start thread stuff
+      //DO WE NEED TO LOCK HERE?
+      //if thread pool is full
+      if(current_size > 30)
+        return 0;
 
-  //DO WE NEED TO LOCK HERE?
-  //if thread pool is full
-  if(current_size > 30)
-    return 0;
+      string current_input;
+      //create a thread with a function to parse, send, and receive shit
+      
+      (*t_args).thread_size_ptr = &current_size;
+      (*t_args).proxy_port_num = 80;
+      (*t_args).comm_sock_num = comm_sock;
+      (*t_args).hints = hints;
+      (*t_args).servinfo = *servinfo;
 
-  string current_input;
-  //create a thread with a function to parse, send, and receive shit
-  
-  (*t_args).thread_size_ptr = &current_size;
-  (*t_args).proxy_port_num = 80;
-  (*t_args).comm_sock_num = comm_sock;
-  (*t_args).hints = hints;
-  (*t_args).servinfo = *servinfo;
+      pthread_t current_thread = thread_pool[current_size];
+      pthread_create(&current_thread, NULL,
+               threadFunc, (void*) t_args);
 
-  pthread_t current_thread = thread_pool[current_size];
-  pthread_create(&current_thread, NULL,
-           threadFunc, (void*) t_args);
+        /*
+        if (!fork()) { //in child now
+          //runFinger(comm_sock, bp);
 
-    /*
-    if (!fork()) { //in child now
-      //runFinger(comm_sock, bp);
+          close(listen_sock); //child doesn't need the listen socket
 
-      close(listen_sock); //child doesn't need the listen socket
-
-      close(comm_sock);
-      exit(0);
+          close(comm_sock);
+          exit(0);
+        }
+        */
     }
-    */
-    close(comm_sock);  //parent doesn't need this
+      close(comm_sock);  //parent doesn't need this
   }
 
   return 0;
@@ -211,6 +219,8 @@ void *get_in_addr(struct sockaddr *sa)
 
 void* threadFunc(void* t_args)
 {
+
+  cout << "WE HERE" << endl;
   struct thread_args *passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   struct addrinfo *thread_info, *p;
@@ -237,8 +247,8 @@ void* threadFunc(void* t_args)
 
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num, hostname);
 
-	//now we need to send and receive to server
 
+  //now we need to send and receive to server
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
