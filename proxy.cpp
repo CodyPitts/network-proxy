@@ -276,8 +276,8 @@ void* threadFunc(void* t_args)
 
   cout << "past parsing" << endl;
 
-  if(parsed_input == "malformed request"){
-    cerr << "400: Bad request";
+  if(parsed_input == "Internal Error"){
+    cerr << "500: Bad request";
     exit(0);
   }
 
@@ -426,7 +426,7 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   }
 
   if(chunks[0].find("GET") == string::npos)
-    return "malformed request";
+    return "Internal Error";
 
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n";
 
@@ -461,8 +461,8 @@ string parseClientArguments(string unparsed_message,
   arg_lines[0] = absoluteToRelative(arg_lines[0], server_port_num, hostname);
   //arg_lines.push_back(absoluteToRelative(arg_lines[0], server_port_num, hostname));
 
-  if (arg_lines[0] == "malformed request"){
-    return "malformed request";
+  if (arg_lines[0] == "Internal Error"){
+    return "Internal Error";
   }
   for(unsigned int i = 0; i < arg_lines.size(); i++){
     if(arg_lines[i].find("Connection:") != string::npos){
