@@ -213,7 +213,7 @@ void* threadFunc(void* t_args)
 {
   struct thread_args *passed_args = (struct thread_args*) t_args;
   string unparsed_message;
-  struct addrinfo *p;
+  struct addrinfo *thread_info, *p;
   int server_port_num;
   int client_sock;
   string hostname;
@@ -239,7 +239,7 @@ void* threadFunc(void* t_args)
 	//now we need to send and receive
 
   if((rv = getaddrinfo(hostname.c_str(), server_port_num, &(*passed_args).hints, 
-    &(*passed_args).servinfo)) != 0){
+    &thread_info)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return;
   }
