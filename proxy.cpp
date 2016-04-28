@@ -368,7 +368,7 @@ void* threadFunc(void* t_args)
     cout << "after inside recv while" << endl;
     cout << "what are bytes_read:" << bytes_read << endl;
     //tempData += string(bp);
-    receivedData += string(bp);
+    receivedData += string(recPtr);
 
     if(receivedData.length() == oldDataLen)
     {
@@ -378,7 +378,7 @@ void* threadFunc(void* t_args)
     {
       //clear the buffer
       for(int i = 0; i < MAXDATASIZE; i++)
-        buffer[i] = '\0';
+        receive[i] = '\0';
       oldDataLen = receivedData.length();
     }
     cout << "received data: " << receivedData << endl;
