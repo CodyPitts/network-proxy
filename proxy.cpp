@@ -215,7 +215,7 @@ void* threadFunc(void* t_args)
   string unparsed_message;
   struct addrinfo *thread_info, *p;
   string server_port_num;
-  int client_sock;
+  int server_sock;
   string hostname;
   int byte_read;
   int byte_sent;
@@ -236,23 +236,24 @@ void* threadFunc(void* t_args)
   unparsed_message = string(bp);
 
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num, hostname);
-	//now we need to send and receive
+
+	//now we need to send and receive to server
 
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    return;
+    exit(0);
   }
 
-  for(p = (*passed_args).servinfo; p != NULL; p = p->ai_next) {
-    if ((client_sock = socket(p->ai_family, p->ai_socktype,
+  for(p = thread_info; p != NULL; p = p->ai_next) {
+    if ((server_sock = socket(p->ai_family, p->ai_socktype,
                          p->ai_protocol)) == -1) {
       cerr << "Socket";
       continue;
     }
 
-    if (connect(client_sock, p->ai_addr, p->ai_addrlen) == -1) {
-      close(client_sock);
+    if (connect(server_sock, p->ai_addr, p->ai_addrlen) == -1) {
+      close(server_sock);
       cerr << "Connect";
       continue;
     }
@@ -262,15 +263,15 @@ void* threadFunc(void* t_args)
 
   if (p == NULL) {
     fprintf(stderr, "Failed to connect\n");
-    return;
+    exit(0);
   }
 
   do{
-    byte_sent += send(server_port_num, (void*) parsed_input.c_str(), parsed_input.length(), 0);
+    byte_sent += send(server_sock, (void*) parsed_input.c_str(), parsed_input.length(), 0);
   }while(byte_sent > 0 && byte_sent != (int) parsed_input.length());
 
   while(true){
-    byte_read = recv(server_port_num, (void*)bp, MAXDATASIZE, 0);
+    byte_read = recv(server_sock, (void*)bp, MAXDATASIZE, 0);
     if(byte_read == 0)
       break;
   }
