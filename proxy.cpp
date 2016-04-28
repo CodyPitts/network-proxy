@@ -145,13 +145,13 @@ int main(int argc, char *argv[])
 
   while(1) {
     sin_size = sizeof their_addr; 
-    cout << "before if statement" << endl;
+    //cout << "before if statement" << endl;
 
     comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
     if (comm_sock == -1) {
       //probably shouldn't have this repeat indefinitely
-      //cerr << "Accepting";
-      cout << "in if" << endl;
+      //cerr << "Accepting ";
+     // cout << "in if";
       continue;
     }
     else
@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
       
       (*t_args).thread_size_ptr = &current_size;
       (*t_args).proxy_port_num = 80;
+
       (*t_args).comm_sock_num = comm_sock;
       (*t_args).hints = hints;
       (*t_args).servinfo = *servinfo;
@@ -176,7 +177,7 @@ int main(int argc, char *argv[])
       pthread_t current_thread = thread_pool[current_size];
       pthread_create(&current_thread, NULL,
                threadFunc, (void*) t_args);
-
+      close(listen_sock);
         /*
         if (!fork()) { //in child now
           //runFinger(comm_sock, bp);
@@ -188,7 +189,7 @@ int main(int argc, char *argv[])
         }
         */
     }
-      close(comm_sock);  //parent doesn't need this
+    //close(comm_sock);  //parent doesn't need this
   }
 
   return 0;
@@ -219,8 +220,6 @@ void *get_in_addr(struct sockaddr *sa)
 
 void* threadFunc(void* t_args)
 {
-
-  cout << "WE HERE" << endl;
   struct thread_args *passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   struct addrinfo *thread_info, *p;
@@ -234,15 +233,22 @@ void* threadFunc(void* t_args)
   char* bp = buffer;
   string temp_len_1, temp_len_2;
 
+
+
   for(int i = 0; i < MAXDATASIZE; i++)
     buffer[i] = '\0';
 
+  cout << "we here" << endl;
   while(true){
     byte_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0);
     if(byte_read == 0)
       break;
-  }
+    else if(byte_read == -1)
+    {
 
+     cout << "we have error reading" << endl;
+    }
+  }
   unparsed_message = string(bp);
 
 	string parsed_input = parseClientArguments(unparsed_message, "\r\n", server_port_num, hostname);
