@@ -25,7 +25,8 @@ using namespace std;
 
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10347";
+const char* port = "10348";
+pthread_mutex_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
@@ -156,43 +157,34 @@ int main(int argc, char *argv[])
     }
     else
     {
-      cout << "in else" << endl;
-        //start thread stuff
 
-      //DO WE NEED TO LOCK HERE?
-      //if thread pool is full
-      if(current_size > 30)
-        return 0;
+      pthread_mutex_lock(&mut);
 
-      string current_input;
-      //create a thread with a function to parse, send, and receive shit
-      
-      (*t_args).thread_size_ptr = &current_size;
-      (*t_args).proxy_port_num = 80;
+      cout << "inside lock" << endl;
+      //if(current_size <= 30)
+        //{ 
+          current_size++;
+          (*t_args).thread_size_ptr = &current_size;
+          (*t_args).proxy_port_num = 80;
 
-      (*t_args).comm_sock_num = comm_sock;
-      (*t_args).hints = hints;
-      (*t_args).servinfo = *servinfo;
+          (*t_args).comm_sock_num = comm_sock;
+          (*t_args).hints = hints;
+          (*t_args).servinfo = *servinfo;
 
-      pthread_t current_thread = thread_pool[current_size];
-      pthread_create(&current_thread, NULL,
-               threadFunc, (void*) t_args);
-      close(listen_sock);
-        /*
-        if (!fork()) { //in child now
-          //runFinger(comm_sock, bp);
+          pthread_t current_thread = thread_pool[current_size];
+          pthread_create(&current_thread, NULL,
+                   threadFunc, (void*) t_args);
+          
+          close(listen_sock);  //parent doesn't need this
+      //}
 
-          close(listen_sock); //child doesn't need the listen socket
-
-          close(comm_sock);
-          exit(0);
-        }
-        */
+      //pthread_mutex_unlock(&mut);
     }
-    //close(comm_sock);  //parent doesn't need this
+    //close(comm_sock);
   }
 
   return 0;
+  pthread_exit(NULL);
 }
 
 
@@ -239,19 +231,6 @@ void* threadFunc(void* t_args)
   for(int i = 0; i < MAXDATASIZE; i++)
     buffer[i] = '\0';
 
-  // while(true){
-  //   byte_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0);
-  //   cout << "we here" << endl;
-  //   cout << byte_read << endl;
-  //   if(byte_read == 0)
-  //     break;
-  //   else if(byte_read == -1)
-  //   {
-  //    cout << "we have error reading" << endl;
-  //    break;
-  //   }
-  // }
-
   string receivedData;
   string tempData;
   int oldDataLen = -1;
@@ -263,13 +242,14 @@ void* threadFunc(void* t_args)
   {
     while (( bytes_read = recv((*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0)) > 0)
     {
+
+    cout << "inside while "<< endl;
       if( *(bp + bytes_read) == '\0')
         break;
       bp += bytes_read;
       if(bytes_read == 0)
         break;
     }
-    //tempData += string(bp);
     receivedData += string(bp);
 
     if(receivedData.find(carriageRet+carriageRet) != -1 || receivedData.length() == oldDataLen)
@@ -283,7 +263,7 @@ void* threadFunc(void* t_args)
         buffer[i] = '\0';
       oldDataLen = receivedData.length();
     }
-    cout << receivedData << endl;
+    cout << "receivedData: " << receivedData << endl;
   }
 
 
@@ -383,12 +363,19 @@ void* threadFunc(void* t_args)
   cout <<"receivedData Length: " << receivedData.length() << endl;
 
   do{
-    byte_sent = send((*passed_args).comm_sock_num, (void*) receivedData.c_str(), receivedData.length(), 0);
+    byte_sent = send((*passed_args).comm_sock_num, (void*) receivedData.c_str(), MAXDATASIZE, 0);
     cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
-  
+
   cout << "At end of thread" << endl;
+  pthread_mutex_lock(&mut);
+
+  (*passed_args).thread_size_ptr--;
+
+  pthread_mutex_unlock(&mut);
+
+  pthread_exit(NULL);  
 }
 
 
