@@ -449,7 +449,7 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n" +
     + "Host: " + hostname;
 
-  cout << complete << endl;
+  cout << "complete:" << complete << endl;
   return complete;
 }
 
@@ -461,6 +461,7 @@ string parseClientArguments(string unparsed_message,
   vector<string> arg_lines;
   arg_lines.resize(MAXARGUMENTS);
   bool edited_connection = false;
+  bool edited_hostname_header = false;
   string finished_request;
   int count = 0;
   while((index = unparsed_message.find(delimiter)) != string::npos){
@@ -491,6 +492,17 @@ string parseClientArguments(string unparsed_message,
 
   if(edited_connection == false)
     arg_lines[1] += "Connection: close\r\n";
+
+  for(unsigned int i = 0; i < arg_lines.size(); i++){
+    if(arg_lines[i].find("Host:") != string::npos){
+      cout << "ARG_LINES: " << arg_lines[i] << endl;
+      arg_lines[i] = "Host: " + hostname + "\r\n";
+      edited_hostname_header = true;
+    }
+  }
+
+  if(edited_hostname_header == false)
+    arg_lines[1] = "Host: " + hostname + "\r\n" + arg_lines[1];
 
   finished_request = accumulate(arg_lines.begin(), arg_lines.end(), string(""));
 
