@@ -296,6 +296,10 @@ void* threadFunc(void* t_args)
 
   cout << "past parsing" << endl;
 
+  if(parsed_input == "malformed request"){
+    cerr << "400: Bad request";
+    exit(0);
+  }
 
   cout << "parsed input: " << parsed_input << endl;
 
@@ -433,6 +437,9 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   else{
     server_port_num = "80";
   }
+
+  if(chunks[0].find("GET") == string::npos)
+    return "malformed request";
 
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n";
 
