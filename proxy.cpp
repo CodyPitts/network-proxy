@@ -207,7 +207,7 @@ void* threadFunc(void* t_args)
       byte_sent = send(thread_sock, (void*) parsed_input.c_str(), MAXDATASIZE, 0);
       cout << "byte_sent: " << byte_sent << endl;
     }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
-    pthread_exit(NULL);
+    return NULL;
   }
 
  
@@ -215,7 +215,7 @@ void* threadFunc(void* t_args)
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    exit(0);
+    return NULL;
   }
 
   for(p = thread_info; p != NULL; p = p->ai_next) {
@@ -235,7 +235,7 @@ void* threadFunc(void* t_args)
 
   if (p == NULL) {
     fprintf(stderr, "Failed to connect\n");
-    exit(0);
+    return NULL;
   }
 
   do{
