@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 {
   //variables for server listening
   int listen_sock;
-  int comm_sock;  //listen_sock is listen, comm_sock is talk
+  //int comm_sock;  //listen_sock is listen, comm_sock is talk
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr_storage their_addr; //client's address info
   struct sigaction sa;
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 
   t_args->proxy_port_num = 80;
 
-  *(t_args->comm_sock_num) = comm_sock;
+  //*(t_args->comm_sock_num) = *comm_sock;
      printf("Waiting for connections...\n");
 
   t_args->hints = hints;
@@ -174,8 +174,8 @@ int main(int argc, char *argv[])
     sin_size = sizeof their_addr; 
     //cout << "before if statement" << endl;
     sem_getvalue(&mut,&curr_sem_value);
-    comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
-    if (comm_sock == -1) {
+    *(t_args->comm_sock_num) = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
+    if (*(t_args->comm_sock_num) == -1) {
       continue;
     }
     sem_post(&mut);
