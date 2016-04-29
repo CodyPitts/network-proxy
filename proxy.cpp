@@ -25,7 +25,7 @@ using namespace std;
 #define BACKLOG 10 //how many pending connections queue will hold
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10344";
+const char* port = "10345";
 sem_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
@@ -256,7 +256,6 @@ void* threadFunc(void* t_args)
 
   do{
     byte_sent = send(server_sock, (void*) parsed_input.c_str(), parsed_input.length(), 0);  
-    cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) parsed_input.length());
  
 
@@ -268,7 +267,6 @@ void* threadFunc(void* t_args)
   {
     while ((bytes_read = recv(server_sock, (void*)recPtr, MAXDATASIZE, 0)) > 0)
     {
-      cout << "bytes_read: " << bytes_read << endl;
       if( *(bp + bytes_read) == '\0')
         break;
       bp += bytes_read;
@@ -277,7 +275,6 @@ void* threadFunc(void* t_args)
     }
 
     receivedData += string(recPtr);
-
     if(receivedData.length() == oldDataLen)
     {
       read = false;
@@ -294,13 +291,14 @@ void* threadFunc(void* t_args)
 
   do{
     byte_sent = send(thread_sock, (void*) receivedData.c_str(), MAXDATASIZE, 0);
-    cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
 
   // cout << "before exit" << endl;
   // pthread_exit(NULL);  
   // cout << "after exit" << endl;
+
+  close(thread_sock);
   return NULL;
 }
 
