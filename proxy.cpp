@@ -23,23 +23,15 @@
 using namespace std;
 
 #define BACKLOG 10 //how many pending connections queue will hold
-
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
-const char* port = "10349";
-
+const char* port = "10344";
 sem_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
 string parseClientArguments(string unparsed_message,
                                     string delimiter, string &server_port_num, string &hostname);
-
-//some functionality from Beej
-void sigchld_handler(int s);
-
-//get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa);
 
 void* threadFunc(void * t_args);
 
@@ -82,17 +74,12 @@ int main(int argc, char *argv[])
   hints.ai_flags = AI_PASSIVE;
 
   //variables for threading  
-  int current_size = 0;
   int num_threads = 30; 
-  //pool of current threads
-  //vector<pthread_t> threads;
   vector<pthread_t> thread_pool;
   thread_pool.resize(30);
   sem_init(&mut,0,-1);
   struct thread_args *t_args = new thread_args;
   t_args->comm_sock_num = new int;
-
-  
 
   if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -105,9 +92,7 @@ int main(int argc, char *argv[])
                          p->ai_protocol)) == -1) {
       cerr << "Socket";
       continue;
-
     }
-
      if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &yes,
                     sizeof(int)) == -1) {
        cerr << "Setsockopt";
@@ -119,7 +104,6 @@ int main(int argc, char *argv[])
       cerr << "Bind";
       continue;
     }
-
     break;
   }
 
@@ -128,7 +112,6 @@ int main(int argc, char *argv[])
   if (p == NULL)  {
     fprintf(stderr, "Failed to bind\n");
     exit(1);
-
   }
 
   if (listen(listen_sock, BACKLOG) == -1) {
@@ -136,29 +119,19 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  sa.sa_handler = sigchld_handler; //reap all dead processes (Beej)
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART;
-  if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-    cerr << "Sigaction";
-    exit(1);
-  }
 
   printf("Waiting for connections...\n");
-
-  //if(argv[1])
-  //{
+  //get port num
+  if(argv[1])
+  {
     //(*t_args).proxy_port_num = argv[1];
-  //}
-  //else
-  //{
-  
-  //}
 
-  t_args->proxy_port_num = 80;
-
-  //*(t_args->comm_sock_num) = *comm_sock;
-     printf("Waiting for connections...\n");
+    t_args->proxy_port_num = 80;
+  }
+  else
+  {
+    t_args->proxy_port_num = 80;
+  }
 
   t_args->hints = hints;
   t_args->servinfo = *servinfo;
@@ -172,7 +145,6 @@ int main(int argc, char *argv[])
 
   while(1) {
     sin_size = sizeof their_addr; 
-    //cout << "before if statement" << endl;
     sem_getvalue(&mut,&curr_sem_value);
     *(t_args->comm_sock_num) = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
     if (*(t_args->comm_sock_num) == -1) {
@@ -188,26 +160,6 @@ int main(int argc, char *argv[])
 
 
 
-
-void sigchld_handler(int s)
-{
-  //waitpid() might overwrite errno, so we save and restore it:
-  int saved_errno = errno;
-
-  while(waitpid(-1, NULL, WNOHANG) > 0);
-
-  errno = saved_errno;
-}
-
-//get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
 
 void* threadFunc(void* t_args)
 {
@@ -225,14 +177,6 @@ void* threadFunc(void* t_args)
   char* bp = buffer;
   string carriageRet = "\r\n";
   string temp_len_1, temp_len_2;
-
-  sem_wait(&mut);
-  int thread_sock = *(*passed_args).comm_sock_num;
-
-
-  for(int i = 0; i < MAXDATASIZE; i++)
-    buffer[i] = '\0';
-
   string receivedData;
   string tempData;
   int oldDataLen = -1;
@@ -240,12 +184,17 @@ void* threadFunc(void* t_args)
   bool test= true;
   int bytes_read;
 
+  sem_wait(&mut);
+  int thread_sock = *(*passed_args).comm_sock_num;
+
+  for(int i = 0; i < MAXDATASIZE; i++)
+    buffer[i] = '\0';
+
+
   while(read)
   {
     while (( bytes_read = recv(thread_sock, (void*)bp, MAXDATASIZE, 0)) > 0)
     {
-
-    cout << "inside while "<< endl;
       if( *(bp + bytes_read) == '\0')
         break;
       bp += bytes_read;
@@ -253,7 +202,6 @@ void* threadFunc(void* t_args)
         break;
     }
     receivedData += string(bp);
-
     if(receivedData.find(carriageRet+carriageRet) != -1 || receivedData.length() == oldDataLen)
     {
       read = false;
@@ -265,28 +213,20 @@ void* threadFunc(void* t_args)
         buffer[i] = '\0';
       oldDataLen = receivedData.length();
     }
-    cout << "receivedData: " << receivedData << endl;
   }
 
-
-
-  unparsed_message = receivedData;
-  cout << "past while" << endl;
-  cout << "unparsed message: " << unparsed_message << endl;
-
-	string parsed_input = parseClientArguments(unparsed_message, carriageRet, server_port_num, hostname);
-
-  cout << "past parsing" << endl;
+	string parsed_input = parseClientArguments(receivedData, carriageRet, server_port_num, hostname);
 
   if(parsed_input == "Internal Error"){
     cerr << "500: Bad request";
-    exit(0);
+    do{
+      byte_sent = send(thread_sock, (void*) parsed_input.c_str(), MAXDATASIZE, 0);
+      cout << "byte_sent: " << byte_sent << endl;
+    }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
+    pthread_exit(NULL);
   }
 
-  cout << "parsed input: " << parsed_input << endl;
-
-  cout << "host: " << hostname << endl;
-  cout << "port: " << server_port_num << endl;
+ 
   //now we need to send and receive to server
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){
@@ -302,7 +242,6 @@ void* threadFunc(void* t_args)
     }
 
     if (connect(server_sock, p->ai_addr, p->ai_addrlen) == -1) {
-      cout << "inside connect error" << endl;
       close(server_sock);
       cerr << "Connect";
       continue;
@@ -314,9 +253,6 @@ void* threadFunc(void* t_args)
     fprintf(stderr, "Failed to connect\n");
     exit(0);
   }
-  cout << "after connection" << endl << endl;
-  cout << "parsed Input: " << endl << parsed_input << endl;
-  cout <<"parsed input length: " << parsed_input.length() << endl;
 
   do{
     byte_sent = send(server_sock, (void*) parsed_input.c_str(), parsed_input.length(), 0);  
@@ -330,7 +266,6 @@ void* threadFunc(void* t_args)
   char* recPtr = receive;
   while(read)
   {
-    cout << "inside recv while" << endl;
     while ((bytes_read = recv(server_sock, (void*)recPtr, MAXDATASIZE, 0)) > 0)
     {
       cout << "bytes_read: " << bytes_read << endl;
@@ -341,9 +276,6 @@ void* threadFunc(void* t_args)
         break;
     }
 
-    cout << "after inside recv while" << endl;
-    cout << "what are bytes_read:" << bytes_read << endl;
-    //tempData += string(bp);
     receivedData += string(recPtr);
 
     if(receivedData.length() == oldDataLen)
@@ -357,12 +289,8 @@ void* threadFunc(void* t_args)
         receive[i] = '\0';
       oldDataLen = receivedData.length();
     }
-    cout << "received data: " << receivedData << endl;
   }
 
-
-  cout << "receivedData: " << receivedData <<endl;
-  cout <<"receivedData Length: " << receivedData.length() << endl;
 
   do{
     byte_sent = send(thread_sock, (void*) receivedData.c_str(), MAXDATASIZE, 0);
@@ -370,11 +298,10 @@ void* threadFunc(void* t_args)
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
 
-  cout << "At end of thread" << endl;
-
-
-
-  pthread_exit(NULL);  
+  // cout << "before exit" << endl;
+  // pthread_exit(NULL);  
+  // cout << "after exit" << endl;
+  return NULL;
 }
 
 
@@ -394,20 +321,12 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   string temp_port;
 
   while(ssin){
-    //if(count > 3){
-      //cerr << "Malformed request";
     ssin >> chunks[count];
     ++count;
   }
 
-  cout << chunks[0] << " " << chunks[1] << " " << chunks[2] << endl;
-  // if (count != 3){
-  //   cerr << "malformed request" << endl;
-  //   return "malformed request";
-  // }
   unparsed_url = chunks[1];
 
-  cout << "in absoluteTo" << endl;
   host_start_ind = unparsed_url.find("www");
   temp_url = unparsed_url.substr(host_start_ind);
   host_end_ind = temp_url.find("/");
@@ -429,7 +348,6 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
 
   complete = std::string(chunks[0]) + " " + path + " " + chunks[2] + "\r\n";
 
-  cout << "complete:" << complete << endl;
   return complete;
 }
 
@@ -445,20 +363,13 @@ string parseClientArguments(string unparsed_message,
   string finished_request;
   int count = 0;
   while((index = unparsed_message.find(delimiter)) != string::npos){
-    cout <<"in parse while" << endl;
     temp = unparsed_message.substr(0, index + delimiter.length());
-    cout << "temp: " << temp << endl;
-
-    //arg_lines.push_back(temp);
     arg_lines[count] = temp;
     count++;
     unparsed_message.erase(0, index + delimiter.length());
   }
 
-  cout << "in parse" << endl;
-  cout << "arg lines: " << arg_lines[0] << endl;
   arg_lines[0] = absoluteToRelative(arg_lines[0], server_port_num, hostname);
-  //arg_lines.push_back(absoluteToRelative(arg_lines[0], server_port_num, hostname));
 
   if (arg_lines[0] == "Internal Error"){
     return "Internal Error";
@@ -487,7 +398,6 @@ string parseClientArguments(string unparsed_message,
   finished_request = accumulate(arg_lines.begin(), arg_lines.end(), string(""));
 
   return finished_request;
-
 }
 
 
