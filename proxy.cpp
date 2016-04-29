@@ -87,18 +87,16 @@ int main(int argc, char *argv[])
   for(p = servinfo; p != NULL; p = p->ai_next) {
     if ((listen_sock = socket(p->ai_family, p->ai_socktype,
                          p->ai_protocol)) == -1) {
-      cerr << "Socket";
+     
       continue;
     }
      if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &yes,
-                    sizeof(int)) == -1) {
-       cerr << "Setsockopt";
+                    sizeof(int)) == -1) {;
        exit(1);
      }
 
     if (bind(listen_sock, p->ai_addr, p->ai_addrlen) == -1) {
       close(listen_sock);
-      cerr << "Bind";
       continue;
     }
     break;
@@ -107,17 +105,12 @@ int main(int argc, char *argv[])
   freeaddrinfo(servinfo); //no longer need this structure
 
   if (p == NULL)  {
-    fprintf(stderr, "Failed to bind\n");
     exit(1);
   }
 
   if (listen(listen_sock, BACKLOG) == -1) {
-    cerr << "Listen";
     exit(1);
   }
-
-
-  printf("Waiting for connections...\n");
 
   t_args->hints = hints;
 
@@ -167,6 +160,7 @@ void* threadFunc(void* t_args)
   bool read = true;
   bool test= true;
   int bytes_read;
+  string errorNum = "";
 
   sem_wait(&mut);
   int thread_sock = *(*passed_args).comm_sock_num;
@@ -202,10 +196,9 @@ void* threadFunc(void* t_args)
 	string parsed_input = parseClientArguments(receivedData, carriageRet, server_port_num, hostname);
 
   if(parsed_input == "Internal Error"){
-    cerr << "500: Bad request";
+    errorNum =  "500 'Internal Error'";
     do{
-      byte_sent = send(thread_sock, (void*) parsed_input.c_str(), MAXDATASIZE, 0);
-      cout << "byte_sent: " << byte_sent << endl;
+      byte_sent = send(thread_sock, (void*) errorNum.c_str(), MAXDATASIZE, 0);
     }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
     return NULL;
   }
@@ -213,28 +206,32 @@ void* threadFunc(void* t_args)
  
   //now we need to send and receive to server
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
-    &thread_info)) != 0){
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    &thread_info)) != 0){  
+    errorNum = "Error 500";
+    do{
+      byte_sent = send(thread_sock, (void*) errorNum.c_str(), MAXDATASIZE, 0);
+    }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
     return NULL;
   }
 
   for(p = thread_info; p != NULL; p = p->ai_next) {
     if ((server_sock = socket(p->ai_family, p->ai_socktype,
                          p->ai_protocol)) == -1) {
-      cerr << "Socket";
       continue;
     }
 
     if (connect(server_sock, p->ai_addr, p->ai_addrlen) == -1) {
       close(server_sock);
-      cerr << "Connect";
       continue;
     }
     break;
   }
 
   if (p == NULL) {
-    fprintf(stderr, "Failed to connect\n");
+    errorNum = "500 'Internal Error'";
+    do{
+      byte_sent = send(thread_sock, (void*) errorNum.c_str(), MAXDATASIZE, 0);
+    }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
     return NULL;
   }
 
@@ -271,13 +268,17 @@ void* threadFunc(void* t_args)
       oldDataLen = receivedData.length();
     }
   }
-
-
+  cout << "receivedData Size: " << receivedData.length()  << endl;
+  cout << "receivedData: " << receivedData << endl;
+  int data_sent = 0;
   do{
-    byte_sent = send(thread_sock, (void*) receivedData.c_str(), MAXDATASIZE, 0);
-  }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
+    byte_sent = send(thread_sock, (void*) receivedData.c_str(), receivedData.length(), 0);
+    data_sent += byte_sent;
+  }while(byte_sent > 0 && data_sent < (int) receivedData.length());
 
-  cout << receivedData << endl;
+  cout << "receivedData Size: " << receivedData.length()  << endl;
+  cout << "byte_sent: " << data_sent << endl;
+
   close(thread_sock);
   return NULL;
 }
