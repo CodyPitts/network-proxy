@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
   thread_pool.resize(30);
   sem_init(&mut,0,-1);
   struct thread_args *t_args = new thread_args;
+  t_args->comm_sock_num = new int;
 
   
 
