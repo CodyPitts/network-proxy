@@ -23,9 +23,8 @@
 using namespace std;
 
 #define BACKLOG 10 //how many pending connections queue will hold
-#define MAXDATASIZE 20000
+#define MAXDATASIZE 2000000
 const int MAXARGUMENTS = 1000;
-const char* port = "10345";
 sem_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
@@ -43,10 +42,8 @@ struct thread_args
 {
   int* thread_size_ptr;
   int* socketNum;
-  int proxy_port_num;
   int* comm_sock_num;
   struct addrinfo hints;
-  struct addrinfo servinfo;
 
 };
 
@@ -81,7 +78,7 @@ int main(int argc, char *argv[])
   struct thread_args *t_args = new thread_args;
   t_args->comm_sock_num = new int;
 
-  if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
+  if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return 1;
   }
@@ -121,20 +118,8 @@ int main(int argc, char *argv[])
 
 
   printf("Waiting for connections...\n");
-  //get port num
-  if(argv[1])
-  {
-    //(*t_args).proxy_port_num = argv[1];
-
-    t_args->proxy_port_num = 80;
-  }
-  else
-  {
-    t_args->proxy_port_num = 80;
-  }
 
   t_args->hints = hints;
-  t_args->servinfo = *servinfo;
 
   for(int i = 0; i < num_threads; i++)
   {
@@ -163,7 +148,6 @@ int main(int argc, char *argv[])
 
 void* threadFunc(void* t_args)
 {
-  cout << "in threads" << endl;
   struct thread_args* passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   struct addrinfo *thread_info, *p;
@@ -293,11 +277,7 @@ void* threadFunc(void* t_args)
     byte_sent = send(thread_sock, (void*) receivedData.c_str(), MAXDATASIZE, 0);
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
-
-  // cout << "before exit" << endl;
-  // pthread_exit(NULL);  
-  // cout << "after exit" << endl;
-
+  cout << receivedData << endl;
   close(thread_sock);
   return NULL;
 }
@@ -384,7 +364,6 @@ string parseClientArguments(string unparsed_message,
 
   for(unsigned int i = 0; i < arg_lines.size(); i++){
     if(arg_lines[i].find("Host:") != string::npos){
-      cout << "ARG_LINES: " << arg_lines[i] << endl;
       arg_lines[i] = "Host: " + hostname + "\r\n";
       edited_hostname_header = true;
     }
