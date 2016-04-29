@@ -268,16 +268,13 @@ void* threadFunc(void* t_args)
       oldDataLen = receivedData.length();
     }
   }
-  cout << "receivedData Size: " << receivedData.length()  << endl;
-  cout << "receivedData: " << receivedData << endl;
+  
   int data_sent = 0;
   do{
     byte_sent = send(thread_sock, (void*) receivedData.c_str(), receivedData.length(), 0);
     data_sent += byte_sent;
   }while(byte_sent > 0 && data_sent < (int) receivedData.length());
 
-  cout << "receivedData Size: " << receivedData.length()  << endl;
-  cout << "byte_sent: " << data_sent << endl;
 
   close(thread_sock);
   return NULL;
