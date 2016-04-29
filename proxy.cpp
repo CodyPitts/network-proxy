@@ -19,6 +19,7 @@
 #include <string>
 #include <sstream>
 #include <numeric>
+#include <semaphore.h>
 using namespace std;
 
 #define BACKLOG 10 //how many pending connections queue will hold
@@ -26,7 +27,8 @@ using namespace std;
 #define MAXDATASIZE 20000
 const int MAXARGUMENTS = 1000;
 const char* port = "10349";
-pthread_mutex_t mut;
+
+sem_t mut;
 
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
@@ -60,7 +62,7 @@ int main(int argc, char *argv[])
 {
   //variables for server listening
   int listen_sock;
-  int* comm_sock = new int;  //listen_sock is listen, comm_sock is talk
+  int comm_sock;  //listen_sock is listen, comm_sock is talk
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr_storage their_addr; //client's address info
   struct sigaction sa;
@@ -70,7 +72,7 @@ int main(int argc, char *argv[])
   int rv;
   char buffer[MAXDATASIZE];
   char* bp = buffer;
-
+  int curr_sem_value;
   for(int i = 0; i < MAXDATASIZE; i++)
     buffer[i] = '\0';
 
@@ -82,16 +84,11 @@ int main(int argc, char *argv[])
   //variables for threading  
   int current_size = 0;
   int num_threads = 30; 
-  pthread_mutex_t mut;
-  pthread_mutex_init(&mut, NULL);
   //pool of current threads
   //vector<pthread_t> threads;
-  bool running;
-  pthread_mutex_t condition;
-  //pthread_t thread_pool[num_threads];
   vector<pthread_t> thread_pool;
   thread_pool.resize(30);
-
+  sem_init(&mut,0,-1);
   struct thread_args *t_args = new thread_args;
 
   
@@ -156,57 +153,34 @@ int main(int argc, char *argv[])
   //{
   
   //}
-  printf("Waiting for connections...\n");
 
   t_args->proxy_port_num = 80;
-  t_args->comm_sock_num = comm_sock;
+
+  *(t_args->comm_sock_num) = comm_sock;
+     printf("Waiting for connections...\n");
 
   t_args->hints = hints;
   t_args->servinfo = *servinfo;
 
- 
   for(int i = 0; i < num_threads; i++)
   {
     pthread_t temp_t;
     pthread_create(&temp_t, NULL, threadFunc, (void*) t_args);
     thread_pool.push_back(temp_t);
-    //pthread_t current_thread = thread_pool[i];
-
-    //pthread_create(&thread_pool[i], NULL, threadFunc, (void*) t_args);
-
-    //if((rv = pthread_create(&thread_pool[i], NULL, threadFunc,(void *) &t_args)) != 0)
-      //exit(-1);
-
   }
 
   while(1) {
     sin_size = sizeof their_addr; 
     //cout << "before if statement" << endl;
-  
-    *comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
-    if (*comm_sock == -1) {
-      //probably shouldn't have this repeat indefinitely
-      //cerr << "Accepting ";
-     // cout << "in if";
+    sem_getvalue(&mut,&curr_sem_value);
+    comm_sock = accept(listen_sock, (sockaddr *)&their_addr, &sin_size);
+    if (comm_sock == -1) {
       continue;
     }
-
-  //pthread_mutex_lock(&mut);
-     // cout << "inside lock" << endl;
-      //if(current_size <= 30)
-        //{ 
-          //current_size++;
-       
-          
-         // close(listen_sock);  //parent doesn't need this
-      //}
-
-      //pthread_mutex_unlock(&mut);
+    sem_post(&mut);
   }
-    //close(comm_sock);
   delete t_args;
 
-  delete comm_sock;
   return 0;
   pthread_exit(NULL);
 }
@@ -236,6 +210,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 void* threadFunc(void* t_args)
 {
+  cout << "in threads" << endl;
   struct thread_args* passed_args = (struct thread_args*) t_args;
   string unparsed_message;
   struct addrinfo *thread_info, *p;
@@ -250,6 +225,8 @@ void* threadFunc(void* t_args)
   string carriageRet = "\r\n";
   string temp_len_1, temp_len_2;
 
+  sem_wait(&mut);
+  int thread_sock = *(*passed_args).comm_sock_num;
 
 
   for(int i = 0; i < MAXDATASIZE; i++)
@@ -264,7 +241,7 @@ void* threadFunc(void* t_args)
 
   while(read)
   {
-    while (( bytes_read = recv(*(*passed_args).comm_sock_num, (void*)bp, MAXDATASIZE, 0)) > 0)
+    while (( bytes_read = recv(thread_sock, (void*)bp, MAXDATASIZE, 0)) > 0)
     {
 
     cout << "inside while "<< endl;
@@ -387,17 +364,14 @@ void* threadFunc(void* t_args)
   cout <<"receivedData Length: " << receivedData.length() << endl;
 
   do{
-    byte_sent = send(*(*passed_args).comm_sock_num, (void*) receivedData.c_str(), MAXDATASIZE, 0);
+    byte_sent = send(thread_sock, (void*) receivedData.c_str(), MAXDATASIZE, 0);
     cout << "byte_sent: " << byte_sent << endl;
   }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
 
 
   cout << "At end of thread" << endl;
-  pthread_mutex_lock(&mut);
 
-  (*passed_args).thread_size_ptr--;
 
-  pthread_mutex_unlock(&mut);
 
   pthread_exit(NULL);  
 }
