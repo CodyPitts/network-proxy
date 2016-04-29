@@ -1,5 +1,5 @@
 //Cody Pitts
-
+//Jackson Van Dyck
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -27,6 +27,7 @@ using namespace std;
 const int MAXARGUMENTS = 1000;
 sem_t mut;
 
+pthread_mutex_t mutLock;
 string absoluteToRelative(string absolute_uri, string &server_port_num, string &hostname);
 
 string parseClientArguments(string unparsed_message,
@@ -75,6 +76,7 @@ int main(int argc, char *argv[])
   vector<pthread_t> thread_pool;
   thread_pool.resize(30);
   sem_init(&mut,0,-1);
+  pthread_mutex_init(&mutLock, NULL);
   struct thread_args *t_args = new thread_args;
   t_args->comm_sock_num = new int;
 
@@ -87,7 +89,6 @@ int main(int argc, char *argv[])
   for(p = servinfo; p != NULL; p = p->ai_next) {
     if ((listen_sock = socket(p->ai_family, p->ai_socktype,
                          p->ai_protocol)) == -1) {
-     
       continue;
     }
      if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &yes,
@@ -136,9 +137,6 @@ int main(int argc, char *argv[])
   pthread_exit(NULL);
 }
 
-
-
-
 void* threadFunc(void* t_args)
 {
   struct thread_args* passed_args = (struct thread_args*) t_args;
@@ -163,11 +161,13 @@ void* threadFunc(void* t_args)
   string errorNum = "";
 
   sem_wait(&mut);
+
+  pthread_mutex_lock(&mutLock);
   int thread_sock = *(*passed_args).comm_sock_num;
 
+  pthread_mutex_unlock(&mutLock);
   for(int i = 0; i < MAXDATASIZE; i++)
     buffer[i] = '\0';
-
 
   while(read)
   {
@@ -198,19 +198,18 @@ void* threadFunc(void* t_args)
   if(parsed_input == "Internal Error"){
     errorNum =  "500 'Internal Error'";
     do{
-      byte_sent = send(thread_sock, (void*) errorNum.c_str(), MAXDATASIZE, 0);
-    }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
+      byte_sent = send(thread_sock, (void*) errorNum.c_str(), errorNum.length(), 0);
+    }while(byte_sent > 0 && byte_sent != (int) errorNum.length());
     return NULL;
   }
-
  
   //now we need to send and receive to server
   if((rv = getaddrinfo(hostname.c_str(), server_port_num.c_str(), &(*passed_args).hints, 
     &thread_info)) != 0){  
     errorNum = "Error 500";
     do{
-      byte_sent = send(thread_sock, (void*) errorNum.c_str(), MAXDATASIZE, 0);
-    }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
+      byte_sent = send(thread_sock, (void*) errorNum.c_str(), errorNum.length(), 0);
+    }while(byte_sent > 0 && byte_sent != (int) errorNum.length());
     return NULL;
   }
 
@@ -230,8 +229,8 @@ void* threadFunc(void* t_args)
   if (p == NULL) {
     errorNum = "500 'Internal Error'";
     do{
-      byte_sent = send(thread_sock, (void*) errorNum.c_str(), MAXDATASIZE, 0);
-    }while(byte_sent > 0 && byte_sent != (int) MAXDATASIZE);
+      byte_sent = send(thread_sock, (void*) errorNum.c_str(),errorNum.length(), 0);
+    }while(byte_sent > 0 && byte_sent != (int)errorNum.length());
     return NULL;
   }
 
@@ -268,7 +267,6 @@ void* threadFunc(void* t_args)
       oldDataLen = receivedData.length();
     }
   }
-  
   int data_sent = 0;
   do{
     byte_sent = send(thread_sock, (void*) receivedData.c_str(), receivedData.length(), 0);
@@ -304,14 +302,17 @@ string absoluteToRelative(string absolute_uri, string &server_port_num, string &
   unparsed_url = chunks[1];
 
   host_start_ind = unparsed_url.find("www");
+  if(host_start_ind >= 100)
+    host_start_ind = unparsed_url.find("http://") + 7;
   temp_url = unparsed_url.substr(host_start_ind);
+
   host_end_ind = temp_url.find("/");
   path += temp_url.substr(host_end_ind + 1);
   hostname = temp_url.substr(0, host_end_ind);
 
   port_pos = hostname.find(":");
 
-  if(port_pos != string::npos){
+  if(port_pos != string::npos){ 
     temp_port = hostname.substr(port_pos + 1);
     server_port_num = temp_port;
   }
